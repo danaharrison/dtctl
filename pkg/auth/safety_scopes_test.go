@@ -34,7 +34,7 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 				"storage:bucket-definitions:truncate",
 				"dev-obs:breakpoints:set",
 			},
-			minScopeCount: 35, // readonly has many read scopes
+			minScopeCount: 36, // readonly has many read scopes
 		},
 		{
 			name:        "readwrite-mine scopes",
@@ -57,7 +57,7 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 				"storage:bucket-definitions:truncate",
 				"storage:records:delete",
 			},
-			minScopeCount: 45,
+			minScopeCount: 46,
 		},
 		{
 			name:        "readwrite-all scopes",
@@ -83,7 +83,7 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 				"storage:bucket-definitions:truncate",
 				"storage:records:delete",
 			},
-			minScopeCount: 63,
+			minScopeCount: 64,
 		},
 		{
 			name:        "dangerously-unrestricted scopes",
@@ -106,7 +106,7 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 				"dev-obs:breakpoints:set",
 			},
 			mustNotInclude: []string{},
-			minScopeCount:  72,
+			minScopeCount:  73,
 		},
 		{
 			name:        "empty safety level defaults to readwrite-all",
@@ -120,7 +120,7 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 			mustNotInclude: []string{
 				"storage:bucket-definitions:delete",
 			},
-			minScopeCount: 63,
+			minScopeCount: 64,
 		},
 	}
 
@@ -173,19 +173,19 @@ func TestOAuthConfigWithSafetyLevel(t *testing.T) {
 			name:         "Production with readonly",
 			env:          EnvironmentProd,
 			safetyLevel:  config.SafetyLevelReadOnly,
-			expectScopes: 35,
+			expectScopes: 36,
 		},
 		{
 			name:         "Development with readwrite-all",
 			env:          EnvironmentDev,
 			safetyLevel:  config.SafetyLevelReadWriteAll,
-			expectScopes: 63,
+			expectScopes: 64,
 		},
 		{
 			name:         "Hardening with dangerously-unrestricted",
 			env:          EnvironmentHard,
 			safetyLevel:  config.SafetyLevelDangerouslyUnrestricted,
-			expectScopes: 72,
+			expectScopes: 73,
 		},
 	}
 
