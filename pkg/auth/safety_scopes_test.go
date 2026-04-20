@@ -20,6 +20,7 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 			safetyLevel: config.SafetyLevelReadOnly,
 			mustInclude: []string{
 				"openid",
+				"offline_access",
 				"document:documents:read",
 				"automation:workflows:read",
 				"storage:logs:read",
@@ -28,6 +29,7 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 			},
 			mustNotInclude: []string{
 				"document:documents:write",
+				"document:documents:delete",
 				"automation:workflows:write",
 				"storage:logs:write",
 				"storage:buckets:write",
@@ -36,20 +38,23 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 				"dev-obs:breakpoints:set",
 				"extensions:definitions:write",
 			},
-			minScopeCount: 35, // readonly has many read scopes
+			minScopeCount: 36, // readonly has many read scopes
 		},
 		{
 			name:        "readwrite-mine scopes",
 			safetyLevel: config.SafetyLevelReadWriteMine,
 			mustInclude: []string{
 				"openid",
+				"offline_access",
 				"document:documents:read",
 				"document:documents:write",
+				"document:documents:delete",
 				"automation:workflows:read",
 				"automation:workflows:write",
 				"automation:workflows:run",
 				"storage:logs:read",
 				"storage:files:write",
+				"extensions:definitions:write",
 				"email:emails:send",
 				"dev-obs:breakpoints:set",
 				"hub:catalog:read",
@@ -59,17 +64,18 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 				"storage:bucket-definitions:delete",
 				"storage:bucket-definitions:truncate",
 				"storage:records:delete",
-				"extensions:definitions:write",
 			},
-			minScopeCount: 45,
+			minScopeCount: 46,
 		},
 		{
 			name:        "readwrite-all scopes",
 			safetyLevel: config.SafetyLevelReadWriteAll,
 			mustInclude: []string{
 				"openid",
+				"offline_access",
 				"document:documents:read",
 				"document:documents:write",
+				"document:documents:delete",
 				"automation:workflows:read",
 				"automation:workflows:write",
 				"automation:workflows:run",
@@ -79,23 +85,24 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 				"storage:buckets:write",
 				"storage:events:write",
 				"storage:metrics:write",
+				"extensions:definitions:write",
 				"email:emails:send",
 				"dev-obs:breakpoints:set",
 				"hub:catalog:read",
-				"extensions:definitions:write",
 			},
 			mustNotInclude: []string{
 				"storage:bucket-definitions:delete",
 				"storage:bucket-definitions:truncate",
 				"storage:records:delete",
 			},
-			minScopeCount: 63,
+			minScopeCount: 64,
 		},
 		{
 			name:        "dangerously-unrestricted scopes",
 			safetyLevel: config.SafetyLevelDangerouslyUnrestricted,
 			mustInclude: []string{
 				"openid",
+				"offline_access",
 				"document:documents:read",
 				"document:documents:write",
 				"automation:workflows:read",
@@ -114,13 +121,14 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 				"extensions:definitions:write",
 			},
 			mustNotInclude: []string{},
-			minScopeCount:  72,
+			minScopeCount:  73,
 		},
 		{
 			name:        "empty safety level defaults to readwrite-all",
 			safetyLevel: "",
 			mustInclude: []string{
 				"openid",
+				"offline_access",
 				"storage:logs:write",
 				"storage:buckets:write",
 				"dev-obs:breakpoints:set",
@@ -128,7 +136,7 @@ func TestGetScopesForSafetyLevel(t *testing.T) {
 			mustNotInclude: []string{
 				"storage:bucket-definitions:delete",
 			},
-			minScopeCount: 63,
+			minScopeCount: 64,
 		},
 	}
 
@@ -181,19 +189,19 @@ func TestOAuthConfigWithSafetyLevel(t *testing.T) {
 			name:         "Production with readonly",
 			env:          EnvironmentProd,
 			safetyLevel:  config.SafetyLevelReadOnly,
-			expectScopes: 35,
+			expectScopes: 36,
 		},
 		{
 			name:         "Development with readwrite-all",
 			env:          EnvironmentDev,
 			safetyLevel:  config.SafetyLevelReadWriteAll,
-			expectScopes: 63,
+			expectScopes: 64,
 		},
 		{
 			name:         "Hardening with dangerously-unrestricted",
 			env:          EnvironmentHard,
 			safetyLevel:  config.SafetyLevelDangerouslyUnrestricted,
-			expectScopes: 72,
+			expectScopes: 73,
 		},
 	}
 
