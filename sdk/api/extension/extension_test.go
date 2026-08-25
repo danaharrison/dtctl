@@ -1,9 +1,11 @@
 package extension
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -132,5 +134,63 @@ func TestDeleteMonitoringConfiguration(t *testing.T) {
 	err := h.DeleteMonitoringConfiguration(context.Background(), "com.dynatrace.extension.host", "config-1")
 	if err != nil {
 		t.Fatalf("DeleteMonitoringConfiguration() error: %v", err)
+	}
+}
+
+func TestUploadSendsRawZipAsOctetStream(t *testing.T) {
+	// Regression: the endpoint rejects a multipart/form-data body with
+	// `415 Unsupported/Missing 'Content-Type' header`. The zip must go up as a raw
+	// application/octet-stream body, so this pins both the header and the fact that
+	// the body is the bytes themselves rather than a multipart envelope.
+	zip := []byte("PK\x03\x04 pretend this is a signed extension")
+
+	var gotContentType string
+	var gotBody []byte
+	mux := http.NewServeMux()
+	mux.HandleFunc("/platform/extensions/v2/extensions", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		gotContentType = r.Header.Get("Content-Type")
+		gotBody, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ExtensionVersion{
+			ExtensionName: "custom:example",
+			Version:       "0.1.0",
+		})
+	})
+
+	h := NewHandler(newTestClient(t, mux))
+	got, err := h.Upload(context.Background(), "custom_example-0.1.0.zip", zip)
+	if err != nil {
+		t.Fatalf("Upload() error: %v", err)
+	}
+	if gotContentType != "application/octet-stream" {
+		t.Errorf("Content-Type = %q, want application/octet-stream", gotContentType)
+	}
+	if !bytes.Equal(gotBody, zip) {
+		t.Errorf("body was not the raw zip: got %d bytes, want %d", len(gotBody), len(zip))
+	}
+	if got.Version != "0.1.0" {
+		t.Errorf("Version = %q, want 0.1.0", got.Version)
+	}
+}
+
+func TestUploadRejectsEmptyPackage(t *testing.T) {
+	// Fail before issuing a request: an empty body would come back as an opaque
+	// 400 from the API, which is a confusing way to learn the file did not read.
+	called := false
+	mux := http.NewServeMux()
+	mux.HandleFunc("/platform/extensions/v2/extensions", func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+
+	h := NewHandler(newTestClient(t, mux))
+	if _, err := h.Upload(context.Background(), "empty.zip", nil); err == nil {
+		t.Fatal("Upload() with empty data: expected an error, got nil")
+	}
+	if called {
+		t.Error("Upload() issued a request for an empty package; it should fail locally")
 	}
 }

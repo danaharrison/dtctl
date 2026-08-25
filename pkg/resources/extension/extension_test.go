@@ -1,7 +1,9 @@
 package extension
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1062,7 +1064,7 @@ func TestUpload(t *testing.T) {
 			},
 		},
 		{
-			name:       "empty fileName defaults to extension.zip",
+			name:       "empty fileName is accepted (not part of the request)",
 			fileName:   "",
 			zipData:    []byte("PK\x03\x04fake-zip-content"),
 			statusCode: 200,
@@ -1110,9 +1112,24 @@ func TestUpload(t *testing.T) {
 					w.WriteHeader(http.StatusMethodNotAllowed)
 					return
 				}
+				// The endpoint takes the raw zip as application/octet-stream. This
+				// previously asserted multipart/form-data, matching the old
+				// implementation rather than the API, which rejects multipart with
+				// 415 Unsupported/Missing 'Content-Type' header.
 				ct := r.Header.Get("Content-Type")
-				if !strings.HasPrefix(ct, "multipart/form-data") {
-					t.Errorf("expected multipart/form-data content type, got %s", ct)
+				if ct != "application/octet-stream" {
+					t.Errorf("expected application/octet-stream content type, got %s", ct)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				body, readErr := io.ReadAll(r.Body)
+				if readErr != nil {
+					t.Errorf("failed to read request body: %v", readErr)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				if !bytes.Equal(body, tt.zipData) {
+					t.Errorf("body is not the raw zip: got %d bytes, want %d", len(body), len(tt.zipData))
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}

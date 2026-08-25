@@ -1,12 +1,10 @@
 package extension
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -513,29 +511,20 @@ func (h *Handler) UpdateMonitoringConfiguration(ctx context.Context, extensionNa
 
 // Upload uploads a custom extension zip file to the Dynatrace environment.
 // The zipData should contain the raw bytes of the extension zip package.
-// The optional fileName is used as the multipart filename; if empty, "extension.zip" is used.
+//
+// The endpoint takes the zip as a raw application/octet-stream body. A
+// multipart/form-data body is rejected with
+// `415 Unsupported/Missing 'Content-Type' header`, which reads like a missing
+// header but is really the wrong one for this endpoint -- so fileName is not
+// part of the request and is accepted only for API compatibility.
 func (h *Handler) Upload(ctx context.Context, fileName string, zipData []byte) (*ExtensionVersion, error) {
-	if fileName == "" {
-		fileName = "extension.zip"
-	}
-
-	var body bytes.Buffer
-	writer := multipart.NewWriter(&body)
-
-	part, err := writer.CreateFormFile("file", fileName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create multipart field: %w", err)
-	}
-	if _, err := part.Write(zipData); err != nil {
-		return nil, fmt.Errorf("failed to write extension data: %w", err)
-	}
-	if err := writer.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	if len(zipData) == 0 {
+		return nil, fmt.Errorf("extension package is empty")
 	}
 
 	resp, err := h.client.HTTP().R().SetContext(ctx).
-		SetHeader("Content-Type", writer.FormDataContentType()).
-		SetBody(body.Bytes()).
+		SetHeader("Content-Type", "application/octet-stream").
+		SetBody(zipData).
 		Post("/platform/extensions/v2/extensions")
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload extension: %w", err)
